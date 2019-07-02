@@ -1,0 +1,1 @@
+A set implemented with a concurrent linked list in Go
