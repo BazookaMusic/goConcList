@@ -12,21 +12,21 @@ type ll struct {
 
 //ll_node The linked list nodes
 type ll_node struct {
-	item   *int
-	key    int
-	marked bool // marked for deletion, is invalid
-	next   *ll_node
-	lock   sync.Mutex
-	isHead bool
+	item       *int
+	key        int
+	marked     bool // marked for deletion, is invalid
+	next       *ll_node
+	lock       sync.Mutex
+	isSentinel uint8 // 0 is normal node, 1 is head, 2 is tail
 }
 
 //ToSlice Convert to slice
-func (n *ll) ToSlice() []*int {
-	var ret []*int
+func (n *ll) ToSlice() []int {
+	var ret []int
 	curr := n.head.next
 
-	for ; curr != nil; curr = curr.next {
-		ret = append(ret, curr.item)
+	for ; curr.isSentinel < 2; curr = curr.next {
+		ret = append(ret, *curr.item)
 	}
 
 	return ret
@@ -37,7 +37,7 @@ func (n *ll) ToSlice() []*int {
 func (n *ll) Find(key int) (*ll_node, bool) {
 	curr := n.head
 
-	for ; curr != nil && (curr.isHead || curr.key < key); curr = curr.next {
+	for ; curr.isSentinel != 2 || curr.key < key; curr = curr.next {
 	}
 
 	return curr, curr != nil && curr.key == key && !curr.marked
@@ -47,11 +47,19 @@ func (n *ll) Find(key int) (*ll_node, bool) {
 func New() *ll {
 	ll_n := new(ll)
 	head := new(ll_node)
+	tail := new(ll_node)
 
 	// head has a nil item
 	head.item = nil
-	head.isHead = true
+	head.isSentinel = 1
+	head.lock = sync.Mutex{}
+	head.next = tail
+
+	tail.isSentinel = 2
+	tail.lock = sync.Mutex{}
+
 	ll_n.head = head
+
 	return ll_n
 }
 
@@ -69,49 +77,54 @@ func (n *ll) Insert(key int, item *int) bool {
 		curr := pred.next
 
 		// search for node with key
-		for ; curr != nil && (curr.isHead || curr.key < key); pred, curr = curr, curr.next {
+		for curr.isSentinel < 2 && curr.key < key {
+			pred = curr
+			curr = curr.next
 		}
 
 		// found ?
-
-		// no!
-		if curr != nil && curr.key == key {
-			return false
-		}
 
 		// yes!
 		// lock curr and pred because
 		// they must both be modified
 
 		pred.lock.Lock()
-		if curr != nil {
-			curr.lock.Lock()
-		}
+		curr.lock.Lock()
 
 		// if not already removed, add
-		if !pred.marked && (curr == nil || !curr.marked) && pred.next == curr {
+		if !pred.marked && !curr.marked && pred.next == curr {
+
+			// no!
+			if curr.isSentinel == 0 && curr.key == key {
+				curr.lock.Unlock()
+				pred.lock.Unlock()
+
+				fmt.Println(false)
+				return false
+			}
+
+			// create a new node
 			new_node := new(ll_node)
 			new_node.key = key
 			new_node.item = item
 			new_node.marked = false
 			new_node.lock = sync.Mutex{}
-			pred.next = new_node
+
 			new_node.next = curr
 
+			// connect new node
+			pred.next = new_node
+
+			curr.lock.Unlock()
 			pred.lock.Unlock()
-			if curr != nil {
-				curr.lock.Unlock()
-			}
 
 			return true
 		}
 
 		// else retry after unlocking
-
+		curr.lock.Unlock()
 		pred.lock.Unlock()
-		if curr != nil {
-			curr.lock.Unlock()
-		}
+
 	}
 
 }
@@ -122,7 +135,7 @@ func (n *ll) Delete(key int) bool {
 		pred := n.head
 		curr := pred.next
 
-		for ; curr != nil && (curr.isHead || curr.key < key); pred, curr = curr, curr.next {
+		for ; curr.isSentinel == 0 && curr.key < key; pred, curr = curr, curr.next {
 		}
 
 		if curr == nil || curr.key != key {
@@ -133,6 +146,7 @@ func (n *ll) Delete(key int) bool {
 		curr.lock.Lock()
 
 		if !pred.marked && !curr.marked && pred.next == curr {
+			curr.marked = true
 			pred.next = curr.next
 
 			pred.lock.Unlock()
