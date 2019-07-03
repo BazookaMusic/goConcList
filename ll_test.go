@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var iterations = 500
+var iterations = 5000
 
 func insertAndWait(index int, item *int, a *ll, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -39,5 +39,18 @@ func TestInsertDelete(t *testing.T) {
 
 	wg.Wait()
 	a.Print()
+
+	counter := iterations/2 + 1
+	for _, item := range a.ToSlice() {
+		if item < iterations/2 {
+			t.Error("Node which should be deleted found")
+		}
+
+		if item != counter {
+			t.Errorf("Inserted item %d not found", item)
+		}
+		counter++
+
+	}
 
 }
