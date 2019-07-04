@@ -1,27 +1,27 @@
-package ll
+package linked_list_lLock
 
 import (
 	"fmt"
 	"sync"
 )
 
-//ll A linked list struct
-type ll struct {
-	head *ll_node
+//LinkedListLock A linked list struct
+type LinkedListLock struct {
+	head *LLNodeLock
 }
 
-//ll_node The linked list nodes
-type ll_node struct {
+//LLNodeLock The linked list nodes
+type LLNodeLock struct {
 	item       *int
 	key        int
 	marked     bool // marked for deletion, is invalid
-	next       *ll_node
+	next       *LLNodeLock
 	lock       sync.Mutex
 	isSentinel uint8 // 0 is normal node, 1 is head, 2 is tail
 }
 
 //ToSlice Convert to slice
-func (n *ll) ToSlice() []int {
+func (n *LinkedListLock) ToSlice() []int {
 	var ret []int
 	curr := n.head.next
 
@@ -34,7 +34,7 @@ func (n *ll) ToSlice() []int {
 }
 
 //Find Returns true if item with key is in set
-func (n *ll) Find(key int) (*ll_node, bool) {
+func (n *LinkedListLock) Find(key int) (*LLNodeLock, bool) {
 	curr := n.head
 
 	for ; curr.isSentinel != 2 || curr.key < key; curr = curr.next {
@@ -44,10 +44,10 @@ func (n *ll) Find(key int) (*ll_node, bool) {
 }
 
 //New create new linked list
-func New() *ll {
-	ll_n := new(ll)
-	head := new(ll_node)
-	tail := new(ll_node)
+func New() *LinkedListLock {
+	llNew := new(LinkedListLock)
+	head := new(LLNodeLock)
+	tail := new(LLNodeLock)
 
 	// head has a nil item
 	head.item = nil
@@ -58,20 +58,20 @@ func New() *ll {
 	tail.isSentinel = 2
 	tail.lock = sync.Mutex{}
 
-	ll_n.head = head
+	llNew.head = head
 
-	return ll_n
+	return llNew
 }
 
-//Print print ll contents
-func (n *ll) Print() {
+//Print print LinkedListLock contents
+func (n *LinkedListLock) Print() {
 	s := n.ToSlice()
 	fmt.Println(s)
 }
 
 //Insert Insert node with key and item,
 //optimistic synchronization
-func (n *ll) Insert(key int, item *int) bool {
+func (n *LinkedListLock) Insert(key int, item *int) bool {
 	for {
 		pred := n.head
 		curr := pred.next
@@ -104,16 +104,16 @@ func (n *ll) Insert(key int, item *int) bool {
 			}
 
 			// create a new node
-			new_node := new(ll_node)
-			new_node.key = key
-			new_node.item = item
-			new_node.marked = false
-			new_node.lock = sync.Mutex{}
+			newNode := new(LLNodeLock)
+			newNode.key = key
+			newNode.item = item
+			newNode.marked = false
+			newNode.lock = sync.Mutex{}
 
-			new_node.next = curr
+			newNode.next = curr
 
 			// connect new node
-			pred.next = new_node
+			pred.next = newNode
 
 			curr.lock.Unlock()
 			pred.lock.Unlock()
@@ -130,7 +130,7 @@ func (n *ll) Insert(key int, item *int) bool {
 }
 
 //Delete Remove node with key
-func (n *ll) Delete(key int) bool {
+func (n *LinkedListLock) Delete(key int) bool {
 	for {
 		pred := n.head
 		curr := pred.next

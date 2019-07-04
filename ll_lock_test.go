@@ -1,4 +1,4 @@
-package ll
+package linked_list_lock
 
 import (
 	"sync"
@@ -7,12 +7,12 @@ import (
 
 var iterations = 5000
 
-func insertAndWait(index int, item *int, a *ll, wg *sync.WaitGroup) {
+func insertAndWait(index int, item *int, a *LinkedListLock, wg *sync.WaitGroup) {
 	defer wg.Done()
 	a.Insert(index, item)
 }
 
-func delAndWait(index int, a *ll, wg *sync.WaitGroup) {
+func delAndWait(index int, a *LinkedListLock, wg *sync.WaitGroup) {
 	defer wg.Done()
 	a.Delete(index)
 }
